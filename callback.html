@@ -11,24 +11,22 @@
       background: #111;
       color: white;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       min-height: 100vh;
       margin: 0;
     }
 
     .box {
-      text-align: center;
+      width: min(90%, 450px);
       background: #1d1d1d;
-      padding: 40px;
+      padding: 30px;
       border-radius: 20px;
-      width: min(90%, 500px);
+      text-align: center;
     }
 
-    #status {
-      margin-top: 20px;
-      line-height: 1.7;
-      color: #aaa;
+    a {
+      color: white;
     }
   </style>
 </head>
@@ -36,8 +34,13 @@
 <body>
 
 <div class="box">
+
   <h1>🎉 Pollinations</h1>
-  <div id="status">جاري إكمال الاتصال...</div>
+
+  <div id="status">
+    جاري إكمال الاتصال...
+  </div>
+
 </div>
 
 <script>
@@ -47,100 +50,131 @@ const CLIENT_ID = "pk_w3YLBTSVBgxTVi2N";
 const REDIRECT_URI =
   "https://sohaib7838.github.io/pollinations-app/callback.html";
 
+
 async function finishLogin() {
 
-  const status = document.getElementById("status");
+  const status =
+    document.getElementById("status");
 
-  const params = new URLSearchParams(
-    window.location.search
-  );
+  const params =
+    new URLSearchParams(
+      window.location.search
+    );
 
-  const code = params.get("code");
-  const returnedState = params.get("state");
+  const code =
+    params.get("code");
+
+  const returnedState =
+    params.get("state");
 
   const savedState =
-    sessionStorage.getItem("oauth_state");
+    sessionStorage.getItem(
+      "oauth_state"
+    );
 
   const verifier =
-    sessionStorage.getItem("pkce_verifier");
+    sessionStorage.getItem(
+      "pkce_verifier"
+    );
+
 
   if (!code) {
+
     status.textContent =
       "❌ لم يتم العثور على authorization code.";
+
     return;
+
   }
 
-  if (!returnedState || returnedState !== savedState) {
+
+  if (
+    !returnedState ||
+    returnedState !== savedState
+  ) {
+
     status.textContent =
-      "❌ خطأ في التحقق من OAuth state.";
+      "❌ فشل التحقق من state.";
+
     return;
+
   }
+
 
   if (!verifier) {
+
     status.textContent =
       "❌ لم يتم العثور على PKCE verifier.";
+
     return;
+
   }
+
 
   try {
 
-    const response = await fetch(
-      "https://enter.pollinations.ai/api/oauth/token",
-      {
-        method: "POST",
+    const response =
+      await fetch(
+        "https://enter.pollinations.ai/api/oauth/token",
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded"
-        },
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded"
+          },
 
-        body: new URLSearchParams({
+          body: new URLSearchParams({
 
-          grant_type:
-            "authorization_code",
+            grant_type:
+              "authorization_code",
 
-          code: code,
+            code:
+              code,
 
-          client_id:
-            CLIENT_ID,
+            client_id:
+              CLIENT_ID,
 
-          redirect_uri:
-            REDIRECT_URI,
+            redirect_uri:
+              REDIRECT_URI,
 
-          code_verifier:
-            verifier
-        })
-      }
-    );
+            code_verifier:
+              verifier
 
-    const data = await response.json();
+          })
+        }
+      );
+
+
+    const data =
+      await response.json();
+
 
     if (!response.ok) {
+
       throw new Error(
         data.error_description ||
         data.error ||
         "Token exchange failed"
       );
+
     }
 
-    const accessToken =
-      data.access_token;
 
-    if (!accessToken) {
+    if (!data.access_token) {
+
       throw new Error(
         "لم يتم استلام access token"
       );
+
     }
 
-    /*
-      نحفظ المفتاح في sessionStorage فقط.
-      لا نستخدم localStorage.
-    */
 
     sessionStorage.setItem(
       "pollinations_access_token",
-      accessToken
+      data.access_token
     );
+
 
     sessionStorage.removeItem(
       "pkce_verifier"
@@ -150,22 +184,21 @@ async function finishLogin() {
       "oauth_state"
     );
 
+
     status.innerHTML = `
       <h2>✅ تم الاتصال بنجاح!</h2>
       <p>
-        تم ربط حساب Pollinations بالتطبيق.
+        تم ربط حساب Pollinations.
       </p>
       <p>
-        يمكنك الآن العودة إلى التطبيق.
+        يمكنك الآن استخدام Pollen الخاص بك من التطبيق.
       </p>
       <br>
-      <a
-        href="./index.html"
-        style="color:white;"
-      >
-        ← العودة
+      <a href="./index.html">
+        ← العودة إلى التطبيق
       </a>
     `;
+
 
   } catch (error) {
 
@@ -176,8 +209,11 @@ async function finishLogin() {
       <br><br>
       ${error.message}
     `;
+
   }
+
 }
+
 
 finishLogin();
 

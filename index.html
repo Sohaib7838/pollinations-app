@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sohaib Pollinations App</title>
+  <title>Sohaib AI</title>
 
   <style>
     body {
@@ -11,133 +11,306 @@
       background: #111;
       color: white;
       display: flex;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       min-height: 100vh;
       margin: 0;
     }
 
     .box {
-      text-align: center;
+      width: min(90%, 420px);
       background: #1d1d1d;
-      padding: 40px;
+      padding: 30px;
       border-radius: 20px;
-      width: min(90%, 400px);
+      text-align: center;
     }
 
     button {
+      display: block;
+      width: 100%;
+      margin: 12px 0;
+      padding: 14px;
       border: 0;
       border-radius: 12px;
-      padding: 14px 25px;
-      font-size: 17px;
+      font-size: 16px;
       cursor: pointer;
+    }
+
+    #connect {
       background: white;
       color: black;
     }
 
-    button:hover {
-      opacity: 0.85;
+    #generate {
+      background: #444;
+      color: white;
+    }
+
+    #generate:disabled {
+      opacity: .4;
+      cursor: not-allowed;
     }
 
     #status {
+      margin: 15px 0;
+      color: #bbb;
+      line-height: 1.6;
+    }
+
+    img {
+      max-width: 100%;
       margin-top: 20px;
-      color: #aaa;
+      border-radius: 12px;
     }
   </style>
 </head>
 
 <body>
 
-  <div class="box">
-    <h1>Sohaib AI</h1>
+<div class="box">
 
-    <p>
-      اربط حسابك في Pollinations لاستخدام Pollen الخاص بك.
-    </p>
+  <h1>🎨 Sohaib AI</h1>
 
-    <button onclick="connectPollinations()">
-      🔑 Connect Pollinations
-    </button>
+  <p>تطبيق تجريبي لـ Pollinations</p>
 
-    <div id="status"></div>
-  </div>
+  <button id="connect">
+    🔑 Connect Pollinations
+  </button>
 
-  <script>
-    const CLIENT_ID = "pk_w3YLBTSVBgxTVi2N";
+  <button id="generate" disabled>
+    🖼️ Generate Test Image
+  </button>
 
-    const REDIRECT_URI =
-      "https://sohaib7838.github.io/pollinations-app/callback.html";
+  <div id="status"></div>
 
-    function base64url(buffer) {
-      return btoa(
-        String.fromCharCode(...new Uint8Array(buffer))
-      )
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=/g, "");
+  <img id="result" hidden>
+
+</div>
+
+<script>
+
+const CLIENT_ID = "pk_w3YLBTSVBgxTVi2N";
+
+const REDIRECT_URI =
+  "https://sohaib7838.github.io/pollinations-app/callback.html";
+
+
+function randomString(length = 64) {
+
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+
+  const array = new Uint8Array(length);
+
+  crypto.getRandomValues(array);
+
+  return Array.from(array)
+    .map(x => chars[x % chars.length])
+    .join("");
+}
+
+
+function base64url(buffer) {
+
+  return btoa(
+    String.fromCharCode(...new Uint8Array(buffer))
+  )
+  .replace(/\+/g, "-")
+  .replace(/\//g, "_")
+  .replace(/=/g, "");
+
+}
+
+
+async function connectPollinations() {
+
+  const status =
+    document.getElementById("status");
+
+  try {
+
+    status.textContent =
+      "جاري فتح Pollinations...";
+
+    const verifier =
+      randomString();
+
+    const state =
+      randomString(32);
+
+    sessionStorage.setItem(
+      "pkce_verifier",
+      verifier
+    );
+
+    sessionStorage.setItem(
+      "oauth_state",
+      state
+    );
+
+    const hash =
+      await crypto.subtle.digest(
+        "SHA-256",
+        new TextEncoder().encode(verifier)
+      );
+
+    const challenge =
+      base64url(hash);
+
+    const params =
+      new URLSearchParams({
+
+        response_type: "code",
+
+        client_id: CLIENT_ID,
+
+        redirect_uri: REDIRECT_URI,
+
+        scope: "profile usage",
+
+        state: state,
+
+        code_challenge: challenge,
+
+        code_challenge_method: "S256",
+
+        models: "flux",
+
+        expiry: "7",
+
+        budget: "5"
+
+      });
+
+    window.location.href =
+      "https://enter.pollinations.ai/authorize?" +
+      params.toString();
+
+  } catch (error) {
+
+    status.textContent =
+      "❌ " + error.message;
+
+  }
+
+}
+
+
+async function generateImage() {
+
+  const token =
+    sessionStorage.getItem(
+      "pollinations_access_token"
+    );
+
+  const status =
+    document.getElementById("status");
+
+  const image =
+    document.getElementById("result");
+
+  if (!token) {
+
+    status.textContent =
+      "❌ يجب الاتصال أولًا.";
+
+    return;
+
+  }
+
+  status.textContent =
+    "⏳ جاري إنشاء الصورة...";
+
+  image.hidden = true;
+
+  try {
+
+    const prompt =
+      "a cute orange cat wearing sunglasses";
+
+    const response =
+      await fetch(
+        "https://gen.pollinations.ai/image/" +
+        encodeURIComponent(prompt) +
+        "?model=flux",
+        {
+          headers: {
+            "Authorization":
+              "Bearer " + token
+          }
+        }
+      );
+
+    if (!response.ok) {
+
+      const text =
+        await response.text();
+
+      throw new Error(
+        "HTTP " +
+        response.status +
+        ": " +
+        text
+      );
+
     }
 
-    function randomString(length = 64) {
-      const chars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
+    const blob =
+      await response.blob();
 
-      const array = new Uint8Array(length);
-      crypto.getRandomValues(array);
+    const imageUrl =
+      URL.createObjectURL(blob);
 
-      return Array.from(array)
-        .map(x => chars[x % chars.length])
-        .join("");
-    }
+    image.src =
+      imageUrl;
 
-    async function connectPollinations() {
-      try {
-        document.getElementById("status").textContent =
-          "جاري فتح Pollinations...";
+    image.hidden = false;
 
-        const verifier = randomString();
+    status.textContent =
+      "✅ تم إنشاء الصورة بنجاح!";
 
-        sessionStorage.setItem(
-          "pkce_verifier",
-          verifier
-        );
+  } catch (error) {
 
-        const hash = await crypto.subtle.digest(
-          "SHA-256",
-          new TextEncoder().encode(verifier)
-        );
+    console.error(error);
 
-        const challenge = base64url(hash);
+    status.textContent =
+      "❌ فشل إنشاء الصورة: " +
+      error.message;
 
-        const state = randomString(32);
+  }
 
-        sessionStorage.setItem(
-          "oauth_state",
-          state
-        );
+}
 
-        const params = new URLSearchParams({
-          response_type: "code",
-          client_id: CLIENT_ID,
-          redirect_uri: REDIRECT_URI,
-          scope: "profile usage",
-          state: state,
-          code_challenge: challenge,
-          code_challenge_method: "S256",
-          models: "flux",
-          expiry: "7",
-          budget: "5"
-        });
 
-        window.location.href =
-          "https://enter.pollinations.ai/authorize?" +
-          params.toString();
+document
+  .getElementById("connect")
+  .addEventListener(
+    "click",
+    connectPollinations
+  );
 
-      } catch (error) {
-        document.getElementById("status").textContent =
-          "حدث خطأ: " + error.message;
-      }
-    }
-  </script>
+
+document
+  .getElementById("generate")
+  .addEventListener(
+    "click",
+    generateImage
+  );
+
+
+if (
+  sessionStorage.getItem(
+    "pollinations_access_token"
+  )
+) {
+
+  document
+    .getElementById("generate")
+    .disabled = false;
+
+}
+
+</script>
 
 </body>
 </html>
